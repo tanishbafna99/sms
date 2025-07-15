@@ -6,28 +6,32 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application>
 
-        <!-- 📞 Incoming Call Receiver -->
+        <!-- Boot Receiver -->
         <receiver
-            android:name="com.example.easy_sms_receiver.CallReceiver"
-            android:exported="true"
-            android:enabled="true">
-            <intent-filter>
-                <action android:name="android.intent.action.PHONE_STATE" />
-            </intent-filter>
-        </receiver>
-
-        <!-- 🔁 Boot Completed Receiver -->
-        <receiver
-            android:name="com.example.easy_sms_receiver.BootReceiver"
+            android:name=".BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Job Service (for Android 12+) -->
+        <service
+            android:name=".BootServiceJob"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true" />
+
+        <!-- Foreground Service -->
+        <service
+            android:name=".CallSmsForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall|dataSync" />
 
     </application>
 </manifest>

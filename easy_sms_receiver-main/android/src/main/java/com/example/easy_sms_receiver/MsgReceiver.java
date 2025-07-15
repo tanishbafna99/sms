@@ -7,56 +7,53 @@ import android.content.Context;
 import android.content.Intent;
 import android.provider.Telephony;
 import android.telephony.SmsMessage;
+import android.util.Log;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import io.flutter.embedding.engine.FlutterEngine;
-import io.flutter.embedding.engine.plugins.FlutterPlugin;
-import io.flutter.plugin.common.MethodChannel;
-
 public class MsgReceiver extends BroadcastReceiver {
-    Context mcontext;
-    
+
     @Override
     public void onReceive(Context context, Intent intent) {
-        mcontext = context;
-        System.out.println("EasySmsReceiver ::: Receive msg.");
-        if (SMS_RECEIVED_ACTION.equals("android.provider.Telephony.SMS_RECEIVED")) {
+        if (SMS_RECEIVED_ACTION.equals(intent.getAction())) {
+            Log.d("MsgReceiver", "📩 SMS_RECEIVED_ACTION triggered");
             SmsMessage[] smsMessages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
             handleMessage(smsMessages);
         }
     }
 
-    void handleMessage(SmsMessage[] smsList) {
-        Map<String, StringBuilder> messagesGroupedByOriginatingAddress = new HashMap<>();
+    private void handleMessage(SmsMessage[] smsList) {
+        Map<String, StringBuilder> messagesGroupedByAddress = new HashMap<>();
 
         for (SmsMessage sms : smsList) {
             String address = sms.getOriginatingAddress();
-            String messageBody = sms.getMessageBody();
-            if (!messagesGroupedByOriginatingAddress.containsKey(address)) {
-                messagesGroupedByOriginatingAddress.put(address, new StringBuilder());
+            String body = sms.getMessageBody();
+
+            if (!messagesGroupedByAddress.containsKey(address)) {
+                messagesGroupedByAddress.put(address, new StringBuilder());
             }
-            messagesGroupedByOriginatingAddress.get(address).append(messageBody);
+            messagesGroupedByAddress.get(address).append(body);
         }
 
-        for (Map.Entry<String, StringBuilder> entry : messagesGroupedByOriginatingAddress.entrySet()) {
-            String address = entry.getKey();
-            String messages = entry.getValue().toString();
+        for (Map.Entry<String, StringBuilder> entry : messagesGroupedByAddress.entrySet()) {
+            String sender = entry.getKey();
+            String fullMessage = entry.getValue().toString();
 
-            // هنا يمكنك استخدام المتغير messages الذي يحتوي على جميع الرسائل المتجمعة للشخص الواحد
-            System.out.println("Originating Address: " + address);
-            System.out.println("Messages: " + messages);
-
-            // send data into dart
-            passMessageData(address, messages);
+            Log.d("MsgReceiver", "📨 From: " + sender + " | Message: " + fullMessage);
+            passMessageToFlutter(sender, fullMessage);
         }
     }
 
-    void passMessageData(String address, String body){
-        Map<String, String> message = new HashMap<>();
-        message.put("address", address);
-        message.put("body", body);
-        EasySmsReceiverPlugin.channel.invokeMethod(Constants.onMessage, message);
+    private void passMessageToFlutter(String address, String body) {
+        if (EasySmsReceiverPlugin.channel != null) {
+            Map<String, String> data = new HashMap<>();
+            data.put("address", address);
+            data.put("body", body);
+
+            EasySmsReceiverPlugin.channel.invokeMethod(Constants.onMessage, data);
+        } else {
+            Log.w("MsgReceiver", "⚠️ Flutter channel is null. Can't send SMS data.");
+        }
     }
 }
